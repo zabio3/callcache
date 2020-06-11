@@ -10,21 +10,23 @@ import (
 
 // Dispatcher handles each call.
 type Dispatcher struct {
-	mu             sync.Mutex
-	expiration     int64
-	updateInterval int64
-	calls          map[string]*call
+	mu                 sync.Mutex
+	expiration         int64
+	updateInterval     int64
+	maxSizePerResponse int
+	calls              map[string]*call
 }
 
 // NewDispatcher creates a new Dispatcher of function or method calls.
 // expiration is the period to keep the execution result. If updateInterval is
 // greater than 0, the cache of the execution result will be updated in the
 // background when the elapsed time from the previous execution is exceeded.
-func NewDispatcher(expiration, updateInterval time.Duration) *Dispatcher {
+func NewDispatcher(expiration, updateInterval time.Duration, maxSizePerResponse int) *Dispatcher {
 	return &Dispatcher{
-		expiration:     expiration.Nanoseconds(),
-		updateInterval: updateInterval.Nanoseconds(),
-		calls:          make(map[string]*call),
+		expiration:         expiration.Nanoseconds(),
+		updateInterval:     updateInterval.Nanoseconds(),
+		maxSizePerResponse: maxSizePerResponse,
+		calls:              make(map[string]*call),
 	}
 }
 
@@ -33,7 +35,8 @@ func NewDispatcher(expiration, updateInterval time.Duration) *Dispatcher {
 func (d *Dispatcher) Do(key string, fn func() (interface{}, error)) (interface{}, error) {
 	d.mu.Lock()
 	if d.calls[key] == nil {
-		d.calls[key] = &call{expiration: d.expiration, updateInterval: d.updateInterval}
+		// key is registered even if the response that exceeds the size of maxSizePerResponse is not put in the cache.
+		d.calls[key] = &call{expiration: d.expiration, updateInterval: d.updateInterval, maxSizePerResponse: d.maxSizePerResponse}
 	}
 	d.mu.Unlock()
 
@@ -48,12 +51,13 @@ func (d *Dispatcher) Remove(key string) {
 }
 
 type call struct {
-	mu             sync.RWMutex
-	expiration     int64
-	updateInterval int64
-	group          singleflight.Group
-	result         interface{}
-	lastUpdate     int64
+	mu                 sync.RWMutex
+	expiration         int64
+	updateInterval     int64
+	maxSizePerResponse int
+	group              singleflight.Group
+	result             interface{}
+	lastUpdate         int64
 }
 
 func (c *call) do(fn func() (interface{}, error)) (interface{}, error) {
@@ -82,10 +86,13 @@ func (c *call) update(fn func() (interface{}, error)) (interface{}, error) {
 		}
 		v, err := fn()
 		if err == nil {
-			c.mu.Lock()
-			c.result = v
-			c.lastUpdate = now
-			c.mu.Unlock()
+			// use only in bytes
+			if len(v.([]byte)) <= c.maxSizePerResponse {
+				c.mu.Lock()
+				c.result = v
+				c.lastUpdate = now
+				c.mu.Unlock()
+			}
 		}
 		return v, err
 	})

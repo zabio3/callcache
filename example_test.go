@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/daisuzu/callcache"
+	"github.com/zabio3/callcache"
 )
 
 func ExampleDispatcher() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second, 2<<19)
 
 	v, err := dispatcher.Do("key", func() (interface{}, error) {
 		return "example", nil
@@ -22,7 +22,7 @@ func ExampleDispatcher() {
 }
 
 func ExampleNewDispatcher_expiration() {
-	dispatcher := callcache.NewDispatcher(1*time.Nanosecond, 0)
+	dispatcher := callcache.NewDispatcher(1*time.Nanosecond, 0, 2<<19)
 
 	wg := sync.WaitGroup{}
 	results := make([]interface{}, 3)
@@ -49,7 +49,7 @@ func ExampleNewDispatcher_expiration() {
 	// 3
 }
 func ExampleNewDispatcher_updateInterval() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 1*time.Nanosecond)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 1*time.Nanosecond, 2<<19)
 
 	wg := sync.WaitGroup{}
 	results := make([]interface{}, 3)
@@ -77,7 +77,7 @@ func ExampleNewDispatcher_updateInterval() {
 }
 
 func ExampleDispatcher_Do_multiple() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second, 2<<19)
 
 	results := make([]interface{}, 3)
 	for i := range results {
@@ -98,7 +98,7 @@ func ExampleDispatcher_Do_multiple() {
 }
 
 func ExampleDispatcher_Do_concurrentSameKey() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second, 2<<19)
 
 	var value int32
 
@@ -127,7 +127,7 @@ func ExampleDispatcher_Do_concurrentSameKey() {
 }
 
 func ExampleDispatcher_Do_concurrentDifferentKeys() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second, 2<<19)
 
 	wg := sync.WaitGroup{}
 	results := make([]interface{}, 3)
@@ -156,7 +156,7 @@ func ExampleDispatcher_Do_concurrentDifferentKeys() {
 }
 
 func ExampleDispatcher_Remove() {
-	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second)
+	dispatcher := callcache.NewDispatcher(1*time.Minute, 10*time.Second, 2<<19)
 
 	v1, _ := dispatcher.Do("key", func() (interface{}, error) {
 		fmt.Println("Do: #1")
